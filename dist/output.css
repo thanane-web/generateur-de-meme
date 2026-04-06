@@ -464,7 +464,7 @@ body {
   margin-bottom: calc(var(--spacing) * 0);
 }
 .field label {
-  margin-bottom: calc(var(--spacing) * 1);
+  margin-block: calc(var(--spacing) * 1);
   display: block;
   font-size: var(--text-xs);
   line-height: var(--tw-leading, var(--text-xs--line-height));
