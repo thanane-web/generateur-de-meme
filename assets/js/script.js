@@ -115,12 +115,11 @@ function addText() {
     .getElementById("font-family")
     .addEventListener("change", livePreview);
 
-  let previewText = null; // texte temporaire d'aperçu
+  let previewText = null;
 
   function livePreview() {
     const content = document.getElementById("text-content").value.trim();
 
-    // Supprime l'ancien aperçu s'il existe
     if (previewText) {
       texts = texts.filter((t) => t.id !== previewText.id);
       previewText = null;
@@ -131,7 +130,6 @@ function addText() {
       return;
     }
 
-    // Crée un texte temporaire avec un id spécial
     previewText = {
       id: "__preview__",
       text: content,
