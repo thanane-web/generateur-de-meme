@@ -107,25 +107,73 @@ function addText() {
     showToast("Entrez du texte d'abord !");
     return;
   }
-  const t = {
-    id: Date.now(),
-    text: content,
-    x: canvas.width / 2,
-    y: texts.length === 0 ? 50 : canvas.height - 50,
-    size: parseInt(document.getElementById("font-size").value) || 42,
-    font: document.getElementById("font-family").value,
-    color: document.getElementById("text-color").value,
-    strokeColor: document.getElementById("stroke-color").value,
-    strokeWidth: document.getElementById("stroke-width").value,
-    align: currentAlign,
-  };
-  texts.push(t);
-  selectedText = t;
+  document
+    .getElementById("text-content")
+    .addEventListener("input", livePreview);
+  document.getElementById("font-size").addEventListener("input", livePreview);
+  document
+    .getElementById("font-family")
+    .addEventListener("change", livePreview);
+
+  let previewText = null; // texte temporaire d'aperçu
+
+  function livePreview() {
+    const content = document.getElementById("text-content").value.trim();
+
+    // Supprime l'ancien aperçu s'il existe
+    if (previewText) {
+      texts = texts.filter((t) => t.id !== previewText.id);
+      previewText = null;
+    }
+
+    if (!content) {
+      redraw();
+      return;
+    }
+
+    // Crée un texte temporaire avec un id spécial
+    previewText = {
+      id: "__preview__",
+      text: content,
+      x: canvas.width / 2,
+      y: texts.length === 0 ? 50 : canvas.height - 50,
+      size: parseInt(document.getElementById("font-size").value) || 42,
+      font: document.getElementById("font-family").value,
+      color: document.getElementById("text-color").value,
+      strokeColor: document.getElementById("stroke-color").value,
+      strokeWidth: document.getElementById("stroke-width").value,
+      align: currentAlign,
+    };
+
+    texts.push(previewText);
+    redraw();
+  }
+  if (previewText) {
+    previewText.id = Date.now();
+    selectedText = previewText;
+    previewText = null;
+  } else {
+    const t = {
+      id: Date.now(),
+      text: content,
+      x: canvas.width / 2,
+      y: texts.length === 0 ? 50 : canvas.height - 50,
+      size: parseInt(document.getElementById("font-size").value) || 42,
+      font: document.getElementById("font-family").value,
+      color: document.getElementById("text-color").value,
+      strokeColor: document.getElementById("stroke-color").value,
+      strokeWidth: document.getElementById("stroke-width").value,
+      align: currentAlign,
+    };
+    texts.push(t);
+    selectedText = t;
+  }
+
   renderTextsList();
   redraw();
   document.getElementById("text-content").value = "";
+  previewText = null;
 }
-
 function renderTextsList() {
   const list = document.getElementById("texts-list");
   if (!texts.length) {
