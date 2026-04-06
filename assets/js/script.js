@@ -217,6 +217,13 @@ function deleteText(id) {
 }
 
 function resetCanvas() {
+  texts = [];
+  selectedText = null;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  renderTextsList();
+  redraw();
+}
+function resetAllCanvas() {
   bgImage = null;
   texts = [];
   selectedText = null;
@@ -225,7 +232,6 @@ function resetCanvas() {
   renderTextsList();
   redraw();
 }
-
 function downloadMeme() {
   if (!bgImage && !texts.length) {
     showToast("Ajoutez une image ou du texte !");
