@@ -8,12 +8,36 @@ let dragging = false,
   dragOffX = 0,
   dragOffY = 0;
 let currentAlign = "center";
+let previewText = null;
+
+// LIVE PREVIEW LISTENERS
 document.getElementById("text-content").addEventListener("input", livePreview);
 document.getElementById("font-size").addEventListener("input", livePreview);
 document.getElementById("font-family").addEventListener("change", livePreview);
 
-let previewText = null;
+document.getElementById("text-color").addEventListener("input", (e) => {
+  if (previewText) previewText.color = e.target.value;
+  if (selectedText && selectedText !== previewText)
+    selectedText.color = e.target.value;
+  redraw();
+});
 
+document.getElementById("stroke-color").addEventListener("input", (e) => {
+  if (previewText) previewText.strokeColor = e.target.value;
+  if (selectedText && selectedText !== previewText)
+    selectedText.strokeColor = e.target.value;
+  redraw();
+});
+
+document.getElementById("stroke-width").addEventListener("input", (e) => {
+  document.getElementById("stroke-val").textContent = e.target.value + "px";
+  if (previewText) previewText.strokeWidth = e.target.value;
+  if (selectedText && selectedText !== previewText)
+    selectedText.strokeWidth = e.target.value;
+  redraw();
+});
+
+// LIVE PREVIEW
 function livePreview() {
   const content = document.getElementById("text-content").value.trim();
 
@@ -31,7 +55,10 @@ function livePreview() {
     id: "__preview__",
     text: content,
     x: canvas.width / 2,
-    y: texts.length === 0 ? 50 : canvas.height - 50,
+    y:
+      texts.filter((t) => t.id !== "__preview__").length === 0
+        ? 50
+        : canvas.height - 50,
     size: parseInt(document.getElementById("font-size").value) || 42,
     font: document.getElementById("font-family").value,
     color: document.getElementById("text-color").value,
@@ -43,40 +70,32 @@ function livePreview() {
   texts.push(previewText);
   redraw();
 }
+
+// COLOR SWATCHES
 const swatches = document.querySelectorAll(".color-swatch");
-document.getElementById("stroke-width").addEventListener("input", (e) => {
-  document.getElementById("stroke-val").textContent = e.target.value + "px";
-  redraw();
-});
-document
-  .getElementById("text-color")
-  .addEventListener("input", (e) => redraw());
-document
-  .getElementById("stroke-color")
-  .addEventListener("input", (e) => redraw());
 
 function setTextColor(hex) {
   document.getElementById("text-color").value = hex;
   swatches.forEach((s) => s.classList.remove("active"));
   event.target.classList.add("active");
-  if (selectedText) {
-    selectedText.color = hex;
-    redraw();
-  }
+  if (previewText) previewText.color = hex;
+  if (selectedText && selectedText !== previewText) selectedText.color = hex;
+  redraw();
 }
 
+// ALIGNMENT
 function setAlign(a) {
   currentAlign = a;
   ["left", "center", "right"].forEach((x) => {
     document.getElementById("align-" + x).className =
       "btn" + (x === a ? " btn-primary" : "");
   });
-  if (selectedText) {
-    selectedText.align = a;
-    redraw();
-  }
+  if (previewText) previewText.align = a;
+  if (selectedText && selectedText !== previewText) selectedText.align = a;
+  redraw();
 }
 
+// REDRAW
 function redraw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (bgImage) {
@@ -85,7 +104,7 @@ function redraw() {
     ctx.fillStyle = "#1a1a1a";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
-  texts.forEach((t, i) => {
+  texts.forEach((t) => {
     const sz = t.size || 42;
     ctx.font = `900 ${sz}px ${t.font || "Impact, sans-serif"}`;
     ctx.textAlign = t.align || "center";
@@ -115,6 +134,7 @@ function redraw() {
   });
 }
 
+// WRAP TEXT
 function wrapText(ctx, text, x, y, maxW, lineH, stroke) {
   const words = text.split(" ");
   let line = "",
@@ -135,6 +155,7 @@ function wrapText(ctx, text, x, y, maxW, lineH, stroke) {
   });
 }
 
+// ADD TEXT
 function addText() {
   const content = document.getElementById("text-content").value.trim();
   if (!content) {
@@ -168,14 +189,17 @@ function addText() {
   document.getElementById("text-content").value = "";
   previewText = null;
 }
+
+// TEXTS LIST
 function renderTextsList() {
   const list = document.getElementById("texts-list");
-  if (!texts.length) {
+  const permanentTexts = texts.filter((t) => t.id !== "__preview__");
+  if (!permanentTexts.length) {
     list.innerHTML =
       '<div style="font-size:12px;color:var(--color-text-secondary);text-align:center;padding:8px">Aucun texte ajouté</div>';
     return;
   }
-  list.innerHTML = texts
+  list.innerHTML = permanentTexts
     .map(
       (t) => `
     <div class="text-item ${
@@ -193,6 +217,7 @@ function renderTextsList() {
     .join("");
 }
 
+// SELECT / DELETE TEXT
 function selectText(id) {
   selectedText = texts.find((t) => t.id === id) || null;
   if (selectedText) {
@@ -216,22 +241,30 @@ function deleteText(id) {
   redraw();
 }
 
+//  RESET
 function resetCanvas() {
   texts = [];
   selectedText = null;
+  previewText = null;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   renderTextsList();
   redraw();
 }
+
 function resetAllCanvas() {
   bgImage = null;
   texts = [];
   selectedText = null;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  previewText = null;
+  canvas.width = 520;
+  canvas.height = 400;
   dropZone.style.display = "flex";
+  document.getElementById("file-input").value = "";
   renderTextsList();
   redraw();
 }
+
+//DOWNLOAD
 function downloadMeme() {
   if (!bgImage && !texts.length) {
     showToast("Ajoutez une image ou du texte !");
@@ -249,6 +282,7 @@ function downloadMeme() {
   showToast("Mème téléchargé !");
 }
 
+// SHARE
 async function shareMeme() {
   if (!bgImage && !texts.length) {
     showToast("Ajoutez une image ou du texte !");
@@ -290,6 +324,7 @@ async function copyToClipboard() {
   }
 }
 
+// LOAD IMAGE
 function loadImageFromFile(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -315,6 +350,7 @@ dropZone.addEventListener("click", () =>
   document.getElementById("file-input").click()
 );
 
+// DRAG & DROP FILE
 const wrap = document.getElementById("canvas-wrap");
 wrap.addEventListener("dragover", (e) => {
   e.preventDefault();
@@ -330,6 +366,7 @@ wrap.addEventListener("drop", (e) => {
   if (file && file.type.startsWith("image/")) loadImageFromFile(file);
 });
 
+// CANVAS DRAG TEXT
 function getCanvasPos(e) {
   const r = canvas.getBoundingClientRect();
   const scaleX = canvas.width / r.width;
@@ -388,6 +425,7 @@ function moveDrag(pos) {
   redraw();
 }
 
+// TEMPLATES
 function applyTemplate(type) {
   const tpls = {
     drake: [
@@ -417,6 +455,7 @@ function applyTemplate(type) {
   };
   if (!tpls[type]) return;
   texts = [];
+  previewText = null;
   tpls[type].forEach((tp) => {
     texts.push({
       id: Date.now() + Math.random(),
@@ -437,6 +476,7 @@ function applyTemplate(type) {
   showToast("Modèle appliqué ! Cliquez sur les textes pour les modifier.");
 }
 
+// TOAST
 function showToast(msg) {
   const t = document.getElementById("toast");
   t.textContent = msg;
@@ -444,4 +484,5 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove("show"), 2500);
 }
 
+// INIT
 redraw();
