@@ -1,0 +1,213 @@
+@import "tailwindcss";
+* {
+  @apply font-sans box-border m-0 p-0;
+}
+
+body {
+  @apply text-gray-100 bg-gray-800;
+}
+.app {
+  @apply max-w-[900px] mx-auto px-4;
+}
+.header {
+  @apply flex items-center gap-4 my-6;
+}
+.logo-svg {
+  @apply w-20 invert-100;
+}
+.svg-title {
+  @apply text-xl font-semibold;
+}
+.layout {
+  @apply grid grid-cols-1 md:grid-cols-[1fr_300px] gap-4 items-start;
+}
+.canvas-area {
+  @apply bg-gray-700 border-[0.5px] border-gray-500 rounded-sm p-4;
+}
+.canvas-wrap {
+  @apply relative bg-[#111] rounded-md overflow-hidden min-h-80 flex flex-wrap items-center justify-center;
+}
+#meme-canvas {
+  @apply block max-w-full cursor-crosshair;
+}
+.drop-zone {
+  @apply absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-3  cursor-pointer transition-transform duration-150 hover:scale-90;
+}
+.drop-icon {
+  @apply w-12 h-12 border-2 border-dashed border-gray-500 rounded-full flex items-center justify-center text-xl;
+}
+
+.drop-text {
+  @apply text-sm;
+}
+.drop-sub {
+  @apply text-xs text-gray-600;
+}
+.canvas-actions {
+  @apply flex gap-2 mt-3 flex-wrap;
+}
+.btn {
+  @apply flex gap-1.5 text-xs py-1.5 px-3.5 rounded-md border-[0.5px] border-amber-50 cursor-pointer transition-colors duration-150 bg-gray-700 text-gray-100 hover:bg-gray-500;
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.panel {
+  @apply flex flex-col gap-3;
+}
+.card {
+  @apply bg-gray-700 border-[0.5px] border-gray-500 rounded-sm py-4 px-5;
+}
+.card-title {
+  @apply text-xs font-medium uppercase tracking-wider text-gray-400 mb-3;
+}
+.field {
+  @apply mb-0;
+}
+.field label {
+  @apply text-xs text-gray-400 block mb-1;
+}
+.field input[type="text"],
+.field input[type="number"],
+.field select,
+.field textarea {
+  @apply w-full text-xs border-[0.5px] border-gray-500 rounded-sm bg-gray-800 px-2 py-1.5  focus:border-amber-50;
+}
+.field textarea {
+  @apply h-[60px] resize-y;
+}
+.row {
+  @apply flex gap-2;
+}
+.row .field {
+  @apply flex-1;
+}
+.color-row {
+  @apply flex gap-1.5 items-center flex-wrap;
+}
+.color-swatch {
+  @apply w-7 h-7 rounded-md border-[0.5px] border-gray-500 cursor-pointer transition-transform duration-150 hover:scale-110;
+}
+
+.color-swatch.active {
+  @apply outline-2 outline outline-offset-2 outline-gray-500;
+}
+.texts-list {
+  @apply flex flex-col gap-1.5 max-h-40 overflow-y-auto;
+}
+.text-item {
+  @apply flex items-center gap-2 py-1.5 px-2 bg-gray-700 rounded-md text-xs cursor-pointer border-[0.5px] border-transparent hover:border-gray-500;
+}
+.text-item.selected {
+  @apply border-[0.5px] border-gray-400;
+}
+.text-item-label {
+  @apply flex-1 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+.text-item-del {
+  @apply text-red-500 hover:text-red-400 cursor-pointer text-sm px-0.5;
+}
+.templates-grid {
+  @apply grid grid-cols-3 gap-2;
+}
+.template-btn {
+  @apply aspect-square rounded-md border-[0.5px] border-gray-500 bg-gray-700 text-gray-400 cursor-pointer flex flex-col items-center justify-center gap-1 text-xs transition-colors duration-150 p-1.5 text-center hover:bg-gray-600;
+}
+.template-icon {
+  @apply text-xl;
+}
+.toast {
+  @apply fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded-full text-sm opacity-0 transition-opacity duration-300 pointer-events-none z-50;
+}
+.toast.show {
+  @apply opacity-100;
+}
+.drag-handle {
+  @apply absolute w-2 h-2 bg-white border border-gray-300 rounded-full cursor-nwse-resize;
+}
+/* ── LOADER OVERLAY ─────────────────────────────── */
+
+/* Cache l'app le temps du loader */
+.app {
+  opacity: 0;
+}
+.app.ready {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+/* Overlay plein écran */
+#loader-overlay {
+  position: fixed;
+  inset: 0;
+  background: #ffffff; /* adapte à ta couleur de fond */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* Phase 1 : logo au centre qui tourne */
+#loader-logo {
+  width: 80px;
+  height: 80px;
+  position: fixed;
+  /* centré par JS via getBoundingClientRect */
+  animation: spin 1.1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+@keyframes spin {
+  0% {
+    transform: scale(0.5) rotate(0deg);
+    opacity: 0;
+  }
+  20% {
+    transform: scale(1.1) rotate(180deg);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1) rotate(360deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+    opacity: 1;
+  }
+}
+
+/* Phase 2 : vol vers le header (appliqué via JS avec transition) */
+#loader-logo.fly-to-header {
+  transition: top 0.6s cubic-bezier(0.7, 0, 0.3, 1),
+    left 0.6s cubic-bezier(0.7, 0, 0.3, 1),
+    width 0.6s cubic-bezier(0.7, 0, 0.3, 1),
+    height 0.6s cubic-bezier(0.7, 0, 0.3, 1);
+}
+
+/* Fade out de l'overlay */
+#loader-overlay.fade-out {
+  animation: overlayFade 0.35s ease forwards;
+}
+
+@keyframes overlayFade {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Titre qui apparaît lettre par lettre */
+.svg-title .char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: charIn 0.4s ease forwards;
+}
+
+@keyframes charIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

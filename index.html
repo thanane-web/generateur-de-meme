@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Générateur de mèmes</title>
+    <link rel="stylesheet" href="./dist/output.css" />
+    <link
+      rel="shortcut icon"
+      href="./assets/img/favicon.ico"
+      type="image/x-icon"
+    />
+  </head>
+  <body>
+    <div class="app">
+      <div class="header">
+        <img src="./assets/img/logo.svg" alt="logo svg" class="logo-svg" />
+        <h1 class="svg-title">Générateur de Mèmes</h1>
+      </div>
+
+      <div class="layout">
+        <div class="canvas-area">
+          <div class="canvas-wrap" id="canvas-wrap">
+            <canvas id="meme-canvas" width="520" height="400"></canvas>
+            <div class="drop-zone" id="drop-zone">
+              <div class="drop-icon">+</div>
+              <div class="drop-text">Glisser une image ici</div>
+              <div class="drop-sub">ou cliquer pour sélectionner</div>
+            </div>
+          </div>
+          <div class="canvas-actions">
+            <button class="btn btn-primary" onclick="downloadMeme()">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M8 2v8m-3-3l3 3 3-3M2 13h12"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                />
+              </svg>
+              Télécharger
+            </button>
+            <button class="btn" onclick="shareMeme()">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <circle
+                  cx="12"
+                  cy="3"
+                  r="1.5"
+                  stroke="currentColor"
+                  stroke-width="1.2"
+                />
+                <circle
+                  cx="12"
+                  cy="13"
+                  r="1.5"
+                  stroke="currentColor"
+                  stroke-width="1.2"
+                />
+                <circle
+                  cx="4"
+                  cy="8"
+                  r="1.5"
+                  stroke="currentColor"
+                  stroke-width="1.2"
+                />
+                <path
+                  d="M5.5 7l5-3M5.5 9l5 3"
+                  stroke="currentColor"
+                  stroke-width="1.2"
+                />
+              </svg>
+              Partager
+            </button>
+            <button class="btn btn-danger" onclick="resetCanvas()">
+              Réinitialiser les changements
+            </button>
+            <button class="btn btn-danger" onclick="resetCanvas()">
+              Tout réinitialiser
+            </button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="card">
+            <div class="card-title">Texte</div>
+            <div class="field">
+              <label>Contenu</label>
+              <textarea
+                id="text-content"
+                placeholder="Votre texte ici..."
+              ></textarea>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label>Police</label>
+                <select id="font-family">
+                  <option value="Impact, sans-serif">Impact</option>
+                  <option value="'Bangers', cursive">Bangers</option>
+                  <option value="'Anton', sans-serif">Anton</option>
+                  <option value="Arial Black, sans-serif">Arial Black</option>
+                  <option value="Comic Sans MS, cursive">Comic Sans</option>
+                  <option value="var(--font-mono)">Mono</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Taille</label>
+                <input
+                  type="number"
+                  id="font-size"
+                  value="42"
+                  min="10"
+                  max="120"
+                  style="width: 100%"
+                />
+              </div>
+            </div>
+            <div class="field">
+              <label>Couleur du texte</label>
+              <div class="color-row">
+                <input type="color" id="text-color" value="#ffffff" />
+                <div
+                  class="color-swatch active"
+                  style="background: #ffffff"
+                  onclick="setTextColor('#ffffff')"
+                ></div>
+                <div
+                  class="color-swatch"
+                  style="background: #000000"
+                  onclick="setTextColor('#000000')"
+                ></div>
+                <div
+                  class="color-swatch"
+                  style="background: #ffd700"
+                  onclick="setTextColor('#FFD700')"
+                ></div>
+                <div
+                  class="color-swatch"
+                  style="background: #ff4444"
+                  onclick="setTextColor('#FF4444')"
+                ></div>
+                <div
+                  class="color-swatch"
+                  style="background: #44ff88"
+                  onclick="setTextColor('#44FF88')"
+                ></div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Contour</label>
+              <div class="color-row">
+                <input type="color" id="stroke-color" value="#000000" />
+                <input
+                  type="range"
+                  id="stroke-width"
+                  min="0"
+                  max="8"
+                  value="3"
+                  style="flex: 1"
+                />
+                <span
+                  id="stroke-val"
+                  style="
+                    font-size: 12px;
+                    min-width: 20px;
+                    color: var(--color-text-secondary);
+                  "
+                  >3px</span
+                >
+              </div>
+            </div>
+            <div class="field">
+              <label>Alignement</label>
+              <div style="display: flex; gap: 6px">
+                <button
+                  class="btn"
+                  style="flex: 1; justify-content: center"
+                  onclick="setAlign('left')"
+                  id="align-left"
+                >
+                  ←
+                </button>
+                <button
+                  class="btn btn-primary"
+                  style="flex: 1; justify-content: center"
+                  onclick="setAlign('center')"
+                  id="align-center"
+                >
+                  ≡
+                </button>
+                <button
+                  class="btn"
+                  style="flex: 1; justify-content: center"
+                  onclick="setAlign('right')"
+                  id="align-right"
+                >
+                  →
+                </button>
+              </div>
+            </div>
+            <button
+              class="btn btn-primary"
+              style="width: 100%; justify-content: center; margin-top: 4px"
+              onclick="addText()"
+            >
+              + Ajouter ce texte
+            </button>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Textes sur le mème</div>
+            <div class="texts-list" id="texts-list">
+              <div
+                style="
+                  font-size: 12px;
+                  color: var(--color-text-secondary);
+                  text-align: center;
+                  padding: 8px;
+                "
+              >
+                Aucun texte ajouté
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Textes inspiration rapide</div>
+            <div class="templates-grid">
+              <div class="template-btn" onclick="applyTemplate('drake')">
+                <span class="template-icon">🤔</span>Drake
+              </div>
+              <div class="template-btn" onclick="applyTemplate('distracted')">
+                <span class="template-icon">😳</span>Distracted
+              </div>
+              <div class="template-btn" onclick="applyTemplate('two-buttons')">
+                <span class="template-icon">😓</span>Choix
+              </div>
+              <div class="template-btn" onclick="applyTemplate('this-is-fine')">
+                <span class="template-icon">🔥</span>This is Fine
+              </div>
+              <div
+                class="template-btn"
+                onclick="applyTemplate('change-my-mind')"
+              >
+                <span class="template-icon">🧠</span>Change Mind
+              </div>
+              <div
+                class="template-btn"
+                onclick="applyTemplate('expanding-brain')"
+              >
+                <span class="template-icon">🌟</span>Big Brain
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <input type="file" id="file-input" accept="image/*" style="display: none" />
+    <div class="toast" id="toast"></div>
+  </body>
+</html>
+<script src="./assets/js/script.js"></script>
+<script src="./assets/js/header-animation.js"></script>
