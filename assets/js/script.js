@@ -8,7 +8,41 @@ let dragging = false,
   dragOffX = 0,
   dragOffY = 0;
 let currentAlign = "center";
+document.getElementById("text-content").addEventListener("input", livePreview);
+document.getElementById("font-size").addEventListener("input", livePreview);
+document.getElementById("font-family").addEventListener("change", livePreview);
 
+let previewText = null;
+
+function livePreview() {
+  const content = document.getElementById("text-content").value.trim();
+
+  if (previewText) {
+    texts = texts.filter((t) => t.id !== previewText.id);
+    previewText = null;
+  }
+
+  if (!content) {
+    redraw();
+    return;
+  }
+
+  previewText = {
+    id: "__preview__",
+    text: content,
+    x: canvas.width / 2,
+    y: texts.length === 0 ? 50 : canvas.height - 50,
+    size: parseInt(document.getElementById("font-size").value) || 42,
+    font: document.getElementById("font-family").value,
+    color: document.getElementById("text-color").value,
+    strokeColor: document.getElementById("stroke-color").value,
+    strokeWidth: document.getElementById("stroke-width").value,
+    align: currentAlign,
+  };
+
+  texts.push(previewText);
+  redraw();
+}
 const swatches = document.querySelectorAll(".color-swatch");
 document.getElementById("stroke-width").addEventListener("input", (e) => {
   document.getElementById("stroke-val").textContent = e.target.value + "px";
@@ -107,45 +141,7 @@ function addText() {
     showToast("Entrez du texte d'abord !");
     return;
   }
-  document
-    .getElementById("text-content")
-    .addEventListener("input", livePreview);
-  document.getElementById("font-size").addEventListener("input", livePreview);
-  document
-    .getElementById("font-family")
-    .addEventListener("change", livePreview);
 
-  let previewText = null;
-
-  function livePreview() {
-    const content = document.getElementById("text-content").value.trim();
-
-    if (previewText) {
-      texts = texts.filter((t) => t.id !== previewText.id);
-      previewText = null;
-    }
-
-    if (!content) {
-      redraw();
-      return;
-    }
-
-    previewText = {
-      id: "__preview__",
-      text: content,
-      x: canvas.width / 2,
-      y: texts.length === 0 ? 50 : canvas.height - 50,
-      size: parseInt(document.getElementById("font-size").value) || 42,
-      font: document.getElementById("font-family").value,
-      color: document.getElementById("text-color").value,
-      strokeColor: document.getElementById("stroke-color").value,
-      strokeWidth: document.getElementById("stroke-width").value,
-      align: currentAlign,
-    };
-
-    texts.push(previewText);
-    redraw();
-  }
   if (previewText) {
     previewText.id = Date.now();
     selectedText = previewText;
