@@ -65,7 +65,7 @@ body {
   @apply mb-0;
 }
 .field label {
-  @apply text-xs text-gray-400 block mb-1;
+  @apply text-xs text-gray-400 block my-1;
 }
 .field input[type="text"],
 .field input[type="number"],
