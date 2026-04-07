@@ -282,18 +282,21 @@ function downloadMeme() {
   showToast("Mème téléchargé !");
 }
 
-// SHARE
+// Partager
 async function shareMeme() {
   if (!bgImage && !texts.length) {
     showToast("Ajoutez une image ou du texte !");
     return;
   }
+
   const sel = selectedText;
   selectedText = null;
   redraw();
+
   canvas.toBlob(async (blob) => {
     const file = new File([blob], "meme.png", { type: "image/png" });
-    if (navigator.share && navigator.canShare({ files: [file] })) {
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({
           files: [file],
@@ -301,11 +304,15 @@ async function shareMeme() {
           text: "Regardez ce mème !",
         });
       } catch (e) {
-        copyToClipboard();
+        if (e.name !== "AbortError") {
+          copyToClipboard();
+        }
       }
     } else {
+      showToast("Partage direct non supporté ici. Image copiée !");
       copyToClipboard();
     }
+
     selectedText = sel;
     redraw();
   });
@@ -313,17 +320,14 @@ async function shareMeme() {
 
 async function copyToClipboard() {
   try {
-    canvas.toBlob(async (blob) => {
-      await navigator.clipboard.write([
-        new ClipboardItem({ "image/png": blob }),
-      ]);
-      showToast("Image copiée dans le presse-papiers !");
-    });
-  } catch (e) {
-    showToast('Utilisez "Télécharger" pour sauvegarder !');
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve));
+    const item = new ClipboardItem({ "image/png": blob });
+    await navigator.clipboard.write([item]);
+    showToast("Copié ! Collez-le (Ctrl+V) sur Discord, FB ou Twitter.");
+  } catch (err) {
+    showToast("Erreur de copie. Utilisez 'Télécharger'.");
   }
 }
-
 // LOAD IMAGE
 function loadImageFromFile(file) {
   const reader = new FileReader();
