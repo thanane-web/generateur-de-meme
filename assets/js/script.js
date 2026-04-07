@@ -340,59 +340,93 @@ function downloadMeme() {
 }
 
 // ── SHARE / COPY (desktop fix) ────────────────────────────────────
+// async function shareMeme() {
+//   if (!bgImage && !texts.length) {
+//     showToast("Ajoutez une image ou du texte !");
+//     return;
+//   }
+
+//   const sel = selectedText;
+//   selectedText = null;
+//   redraw();
+
+//   // 1. Mobile Share (Works for you)
+//   if (navigator.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+//     try {
+//       const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+//       const file = new File([blob], "meme.png", { type: "image/png" });
+//       await navigator.share({ files: [file], title: "Mon Mème" });
+//       restoreSelection(sel);
+//       return;
+//     } catch (e) {
+//       if (e.name === "AbortError") {
+//         restoreSelection(sel);
+//         return;
+//       }
+//     }
+//   }
+
+//   // 2. Desktop Clipboard (The "Correct" way for 2026)
+//   if (navigator.clipboard && window.ClipboardItem) {
+//     try {
+//       // Create the item IMMEDIATELY to satisfy browser security
+//       const item = new ClipboardItem({
+//         "image/png": new Promise((resolve, reject) => {
+//           canvas.toBlob((blob) => {
+//             if (blob) resolve(blob);
+//             else reject(new Error("Canvas toBlob failed"));
+//           }, "image/png");
+//         }),
+//       });
+
+//       await navigator.clipboard.write([item]);
+//       showToast("✅ Image copiée ! Collez avec Ctrl+V");
+//     } catch (err) {
+//       console.error("Clipboard failed:", err);
+//       // If it fails (likely CORS or Firefox), fallback to download
+//       downloadFallback();
+//     }
+//   } else {
+//     downloadFallback();
+//   }
+
+//   restoreSelection(sel);
+// }
 async function shareMeme() {
-  if (!bgImage && !texts.length) {
-    showToast("Ajoutez une image ou du texte !");
-    return;
-  }
+  const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
 
-  const sel = selectedText;
-  selectedText = null;
-  redraw();
+  showToast("Génération du lien... ⏳");
 
-  // 1. Mobile Share (Works for you)
-  if (navigator.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
-    try {
-      const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
-      const file = new File([blob], "meme.png", { type: "image/png" });
-      await navigator.share({ files: [file], title: "Mon Mème" });
-      restoreSelection(sel);
-      return;
-    } catch (e) {
-      if (e.name === "AbortError") {
-        restoreSelection(sel);
-        return;
-      }
-    }
-  }
+  const formData = new FormData();
+  formData.append("image", blob);
 
-  // 2. Desktop Clipboard (The "Correct" way for 2026)
-  if (navigator.clipboard && window.ClipboardItem) {
-    try {
-      // Create the item IMMEDIATELY to satisfy browser security
-      const item = new ClipboardItem({
-        "image/png": new Promise((resolve, reject) => {
-          canvas.toBlob((blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error("Canvas toBlob failed"));
-          }, "image/png");
-        }),
+  try {
+    // Note: Il faudra créer un Client-ID gratuit sur Imgur pour que ce soit stable
+    const response = await fetch("https://api.imgur.com/3/image", {
+      method: "POST",
+      headers: {
+        Authorization: "Client-ID TON_CLIENT_ID_ICI",
+      },
+      body: formData,
+    });
+
+    const data = await response.json();
+    const link = data.data.link; // Voici ton lien réel !
+
+    // Maintenant on partage ce LIEN au lieu du fichier
+    if (navigator.share) {
+      await navigator.share({
+        title: "Mon Mème",
+        url: link,
       });
-
-      await navigator.clipboard.write([item]);
-      showToast("✅ Image copiée ! Collez avec Ctrl+V");
-    } catch (err) {
-      console.error("Clipboard failed:", err);
-      // If it fails (likely CORS or Firefox), fallback to download
-      downloadFallback();
+    } else {
+      await navigator.clipboard.writeText(link);
+      showToast("Lien copié dans le presse-papier !");
     }
-  } else {
-    downloadFallback();
+  } catch (err) {
+    showToast("Erreur lors de la création du lien.");
   }
-
-  restoreSelection(sel);
 }
-
 function downloadFallback() {
   try {
     const link = document.createElement("a");
