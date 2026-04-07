@@ -637,6 +637,44 @@ function showToast(msg) {
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 2500);
 }
+// galerie
+function saveMemeToGallery() {
+  const memeData = canvas.toDataURL("image/png"); // Convertit le canvas en image
 
+  // Récupérer la galerie existante ou créer un tableau vide
+  let gallery = JSON.parse(localStorage.getItem("myMemes")) || [];
+
+  // Ajouter le nouveau mème au début de la liste
+  gallery.unshift(memeData);
+
+  // Limiter à 10 ou 20 mèmes pour ne pas saturer le stockage (5MB max)
+  if (gallery.length > 12) gallery.pop();
+
+  localStorage.setItem("myMemes", JSON.stringify(gallery));
+  renderGallery(); // Rafraîchir l'affichage
+}
+function renderGallery() {
+  const galleryGrid = document.getElementById("memeGallery");
+  const gallery = JSON.parse(localStorage.getItem("myMemes")) || [];
+
+  if (gallery.length === 0) {
+    galleryGrid.innerHTML = "<p>Aucun mème créé pour le moment.</p>";
+    return;
+  }
+
+  galleryGrid.innerHTML = gallery
+    .map(
+      (imgSrc, index) => `
+    <div class="gallery-item">
+      <img src="${imgSrc}" alt="Meme ${index}">
+      <a href="${imgSrc}" download="meme-${index}.png" class="btn-download-small">⬇️</a>
+    </div>
+  `
+    )
+    .join("");
+}
+
+// Appeler renderGallery au chargement de la page
+window.addEventListener("DOMContentLoaded", renderGallery);
 // ── INIT ──────────────────────────────────────────────────────────
 redraw();
