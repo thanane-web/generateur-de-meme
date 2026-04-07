@@ -10,7 +10,14 @@ let dragging = false,
 let currentAlign = "center";
 let previewText = null;
 
-// LIVE PREVIEW LISTENERS
+// ── RESIZE STATE ──────────────────────────────────────────────────
+let resizing = false;
+let resizeHandle = null; // 'nw'|'n'|'ne'|'e'|'se'|'s'|'sw'|'w'
+let resizeStartPos = null;
+let resizeStartSize = null;
+const HANDLE_R = 6; // hit-radius for handles
+
+// ── LIVE PREVIEW LISTENERS ────────────────────────────────────────
 document.getElementById("text-content").addEventListener("input", livePreview);
 document.getElementById("font-size").addEventListener("input", livePreview);
 document.getElementById("font-family").addEventListener("change", livePreview);
@@ -37,7 +44,7 @@ document.getElementById("stroke-width").addEventListener("input", (e) => {
   redraw();
 });
 
-// LIVE PREVIEW
+// ── LIVE PREVIEW ──────────────────────────────────────────────────
 function livePreview() {
   const content = document.getElementById("text-content").value.trim();
 
@@ -71,7 +78,7 @@ function livePreview() {
   redraw();
 }
 
-// COLOR SWATCHES
+// ── COLOR SWATCHES ────────────────────────────────────────────────
 const swatches = document.querySelectorAll(".color-swatch");
 
 function setTextColor(hex) {
@@ -83,7 +90,7 @@ function setTextColor(hex) {
   redraw();
 }
 
-// ALIGNMENT
+// ── ALIGNMENT ─────────────────────────────────────────────────────
 function setAlign(a) {
   currentAlign = a;
   ["left", "center", "right"].forEach((x) => {
@@ -95,7 +102,59 @@ function setAlign(a) {
   redraw();
 }
 
-// REDRAW
+// ── HELPERS: bounding box ─────────────────────────────────────────
+function getTextBounds(t) {
+  const sz = t.size || 42;
+  ctx.font = `900 ${sz}px ${t.font || "Impact, sans-serif"}`;
+  const lines = getWrappedLines(ctx, t.text, canvas.width - 40);
+  const lineH = sz * 1.3;
+  const totalH = lines.length * lineH;
+  const maxW = Math.max(...lines.map((l) => ctx.measureText(l).width));
+  let bx;
+  if ((t.align || "center") === "center") bx = t.x - maxW / 2;
+  else if (t.align === "left") bx = t.x;
+  else bx = t.x - maxW;
+  return { x: bx - 8, y: t.y - totalH / 2 - 8, w: maxW + 16, h: totalH + 16 };
+}
+
+function getWrappedLines(ctx, text, maxW) {
+  const words = text.split(" ");
+  let line = "",
+    lines = [];
+  for (let w of words) {
+    const test = line + (line ? " " : "") + w;
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line);
+      line = w;
+    } else line = test;
+  }
+  lines.push(line);
+  return lines;
+}
+
+// ── HANDLES ───────────────────────────────────────────────────────
+function getHandles(b) {
+  return {
+    nw: { x: b.x, y: b.y },
+    n: { x: b.x + b.w / 2, y: b.y },
+    ne: { x: b.x + b.w, y: b.y },
+    e: { x: b.x + b.w, y: b.y + b.h / 2 },
+    se: { x: b.x + b.w, y: b.y + b.h },
+    s: { x: b.x + b.w / 2, y: b.y + b.h },
+    sw: { x: b.x, y: b.y + b.h },
+    w: { x: b.x, y: b.y + b.h / 2 },
+  };
+}
+
+function hitHandle(pos, b) {
+  const handles = getHandles(b);
+  for (const [name, h] of Object.entries(handles)) {
+    if (Math.hypot(pos.x - h.x, pos.y - h.y) <= HANDLE_R + 4) return name;
+  }
+  return null;
+}
+
+// ── REDRAW ────────────────────────────────────────────────────────
 function redraw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (bgImage) {
@@ -104,6 +163,7 @@ function redraw() {
     ctx.fillStyle = "#1a1a1a";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
+
   texts.forEach((t) => {
     const sz = t.size || 42;
     ctx.font = `900 ${sz}px ${t.font || "Impact, sans-serif"}`;
@@ -118,35 +178,32 @@ function redraw() {
     }
     ctx.fillStyle = t.color || "#fff";
     wrapText(ctx, t.text, t.x, t.y, canvas.width - 40, sz * 1.3, false);
+
     if (t === selectedText) {
-      const metrics = ctx.measureText(t.text);
-      ctx.strokeStyle = "rgba(100,150,255,0.8)";
+      const b = getTextBounds(t);
+      ctx.strokeStyle = "rgba(100,150,255,0.9)";
       ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 3]);
-      ctx.strokeRect(
-        t.x - metrics.width / 2 - 6,
-        t.y - sz / 2 - 6,
-        metrics.width + 12,
-        sz + 12
-      );
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
       ctx.setLineDash([]);
+
+      const handles = getHandles(b);
+      for (const h of Object.values(handles)) {
+        ctx.fillStyle = "#fff";
+        ctx.strokeStyle = "rgba(100,150,255,1)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(h.x, h.y, HANDLE_R, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
     }
   });
 }
 
-// WRAP TEXT
+// ── WRAP TEXT ─────────────────────────────────────────────────────
 function wrapText(ctx, text, x, y, maxW, lineH, stroke) {
-  const words = text.split(" ");
-  let line = "",
-    lines = [];
-  for (let w of words) {
-    const test = line + (line ? " " : "") + w;
-    if (ctx.measureText(test).width > maxW && line) {
-      lines.push(line);
-      line = w;
-    } else line = test;
-  }
-  lines.push(line);
+  const lines = getWrappedLines(ctx, text, maxW);
   const total = lines.length * lineH;
   lines.forEach((l, i) => {
     const ly = y - total / 2 + i * lineH + lineH / 2;
@@ -155,7 +212,7 @@ function wrapText(ctx, text, x, y, maxW, lineH, stroke) {
   });
 }
 
-// ADD TEXT
+// ── ADD TEXT ──────────────────────────────────────────────────────
 function addText() {
   const content = document.getElementById("text-content").value.trim();
   if (!content) {
@@ -190,7 +247,7 @@ function addText() {
   previewText = null;
 }
 
-// TEXTS LIST
+// ── TEXTS LIST ────────────────────────────────────────────────────
 function renderTextsList() {
   const list = document.getElementById("texts-list");
   const permanentTexts = texts.filter((t) => t.id !== "__preview__");
@@ -217,7 +274,7 @@ function renderTextsList() {
     .join("");
 }
 
-// SELECT / DELETE TEXT
+// ── SELECT / DELETE ───────────────────────────────────────────────
 function selectText(id) {
   selectedText = texts.find((t) => t.id === id) || null;
   if (selectedText) {
@@ -241,7 +298,7 @@ function deleteText(id) {
   redraw();
 }
 
-//  RESET
+// ── RESET ─────────────────────────────────────────────────────────
 function resetCanvas() {
   texts = [];
   selectedText = null;
@@ -264,7 +321,7 @@ function resetAllCanvas() {
   redraw();
 }
 
-//DOWNLOAD
+// ── DOWNLOAD ──────────────────────────────────────────────────────
 function downloadMeme() {
   if (!bgImage && !texts.length) {
     showToast("Ajoutez une image ou du texte !");
@@ -282,105 +339,74 @@ function downloadMeme() {
   showToast("Mème téléchargé !");
 }
 
-// SHARE
-// async function shareMeme() {
-//   if (!bgImage && !texts.length) {
-//     showToast("Ajoutez une image ou du texte !");
-//     return;
-//   }
-//   const sel = selectedText;
-//   selectedText = null;
-//   redraw();
-//   canvas.toBlob(async (blob) => {
-//     const file = new File([blob], "meme.png", { type: "image/png" });
-//     if (navigator.share && navigator.canShare({ files: [file] })) {
-//       try {
-//         await navigator.share({
-//           files: [file],
-//           title: "Mon Mème",
-//           text: "Regardez ce mème !",
-//         });
-//       } catch (e) {
-//         copyToClipboard();
-//       }
-//     } else {
-//       copyToClipboard();
-//     }
-//     selectedText = sel;
-//     redraw();
-//   });
-// }
+// ── SHARE / COPY (desktop fix) ────────────────────────────────────
+// KEY FIX: Pass a Promise<Blob> (not a resolved blob) directly to
+// ClipboardItem so the write() stays within the user-gesture window
+// that Chrome/Firefox require. Wrapping it in toBlob callback breaks
+// this timing guarantee and causes SecurityError on desktop.
 async function shareMeme() {
   if (!bgImage && !texts.length) {
     showToast("Ajoutez une image ou du texte !");
     return;
   }
 
-  // On retire la sélection pour avoir un rendu propre
   const sel = selectedText;
   selectedText = null;
   redraw();
 
-  canvas.toBlob(async (blob) => {
-    if (!blob) return;
+  const getBlob = () =>
+    new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
 
-    const file = new File([blob], "meme.png", { type: "image/png" });
-
-    // VERIFICATION : Est-ce que le navigateur PEUT partager ce fichier ?
-    if (
-      navigator.share &&
-      navigator.canShare &&
-      navigator.canShare({ files: [file] })
-    ) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: "Mon Mème",
-          text: "Regardez ce mème !",
-        });
-        resetSelection(sel);
+  // Mobile: native share sheet
+  if (navigator.share) {
+    try {
+      const blob = await getBlob();
+      const file = new File([blob], "meme.png", { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "Mon Mème" });
+        restoreSelection(sel);
         return;
-      } catch (e) {
-        // Si l'utilisateur annule, on ne fait rien de plus
-        if (e.name === "AbortError") {
-          resetSelection(sel);
-          return;
-        }
+      }
+    } catch (e) {
+      if (e.name === "AbortError") {
+        restoreSelection(sel);
+        return;
       }
     }
+  }
 
-    // FALLBACK DESKTOP : Copie dans le presse-papiers
+  // Desktop: clipboard
+  if (navigator.clipboard && window.ClipboardItem) {
     try {
-      const item = new ClipboardItem({ "image/png": blob });
-      await navigator.clipboard.write([item]);
-      showToast("Partage non supporté : Image copiée ! Collez-la (Ctrl+V)");
+      // Pass Promise<Blob> directly — this is the correct pattern for desktop
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": getBlob() }),
+      ]);
+      showToast("✅ Image copiée ! Collez-la avec Ctrl+V");
     } catch (err) {
-      showToast("Utilisez le bouton 'Télécharger' sur ce navigateur.");
+      console.warn("Clipboard write failed:", err);
+      const blob = await getBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "meme.png";
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("Copie impossible — image téléchargée.");
     }
+  } else {
+    showToast('Utilisez le bouton "Télécharger" pour sauvegarder.');
+  }
 
-    resetSelection(sel);
-  });
+  restoreSelection(sel);
 }
 
-// Fonction utilitaire pour remettre le cadre de sélection après l'export
-function resetSelection(sel) {
+function restoreSelection(sel) {
   selectedText = sel;
   redraw();
 }
-async function copyToClipboard() {
-  try {
-    canvas.toBlob(async (blob) => {
-      await navigator.clipboard.write([
-        new ClipboardItem({ "image/png": blob }),
-      ]);
-      showToast("Image copiée dans le presse-papiers !");
-    });
-  } catch (e) {
-    showToast('Utilisez "Télécharger" pour sauvegarder !');
-  }
-}
 
-// LOAD IMAGE
+// ── LOAD IMAGE ────────────────────────────────────────────────────
 function loadImageFromFile(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -406,7 +432,7 @@ dropZone.addEventListener("click", () =>
   document.getElementById("file-input").click()
 );
 
-// DRAG & DROP FILE
+// ── DRAG & DROP FILE ──────────────────────────────────────────────
 const wrap = document.getElementById("canvas-wrap");
 wrap.addEventListener("dragover", (e) => {
   e.preventDefault();
@@ -422,7 +448,7 @@ wrap.addEventListener("drop", (e) => {
   if (file && file.type.startsWith("image/")) loadImageFromFile(file);
 });
 
-// CANVAS DRAG TEXT
+// ── CANVAS COORDINATES ────────────────────────────────────────────
 function getCanvasPos(e) {
   const r = canvas.getBoundingClientRect();
   const scaleX = canvas.width / r.width;
@@ -432,34 +458,92 @@ function getCanvasPos(e) {
   return { x: (clientX - r.left) * scaleX, y: (clientY - r.top) * scaleY };
 }
 
-canvas.addEventListener("mousedown", (e) => startDrag(getCanvasPos(e)));
-canvas.addEventListener("mousemove", (e) => moveDrag(getCanvasPos(e)));
-canvas.addEventListener("mouseup", () => (dragging = false));
-canvas.addEventListener("touchstart", (e) => {
-  e.preventDefault();
-  startDrag(getCanvasPos(e));
-});
-canvas.addEventListener("touchmove", (e) => {
-  e.preventDefault();
-  moveDrag(getCanvasPos(e));
-});
-canvas.addEventListener("touchend", () => (dragging = false));
+// ── CURSOR ────────────────────────────────────────────────────────
+const HANDLE_CURSORS = {
+  nw: "nw-resize",
+  n: "n-resize",
+  ne: "ne-resize",
+  e: "e-resize",
+  se: "se-resize",
+  s: "s-resize",
+  sw: "sw-resize",
+  w: "w-resize",
+};
 
+// ── EVENTS ────────────────────────────────────────────────────────
+canvas.addEventListener("mousedown", (e) => startDrag(getCanvasPos(e)));
+canvas.addEventListener("mousemove", (e) => {
+  const pos = getCanvasPos(e);
+  if (dragging || resizing) {
+    moveDrag(pos);
+    return;
+  }
+  if (selectedText) {
+    const b = getTextBounds(selectedText);
+    const h = hitHandle(pos, b);
+    canvas.style.cursor = h ? HANDLE_CURSORS[h] : "default";
+  } else {
+    canvas.style.cursor = "default";
+  }
+});
+canvas.addEventListener("mouseup", endDrag);
+canvas.addEventListener("mouseleave", endDrag);
+
+canvas.addEventListener(
+  "touchstart",
+  (e) => {
+    e.preventDefault();
+    startDrag(getCanvasPos(e));
+  },
+  { passive: false }
+);
+canvas.addEventListener(
+  "touchmove",
+  (e) => {
+    e.preventDefault();
+    moveDrag(getCanvasPos(e));
+  },
+  { passive: false }
+);
+canvas.addEventListener("touchend", endDrag);
+
+function endDrag() {
+  dragging = false;
+  resizing = false;
+  resizeHandle = null;
+}
+
+// ── START DRAG OR RESIZE ──────────────────────────────────────────
 function startDrag(pos) {
+  // 1. Check resize handle on selected text first
+  if (selectedText) {
+    const b = getTextBounds(selectedText);
+    const h = hitHandle(pos, b);
+    if (h) {
+      resizing = true;
+      resizeHandle = h;
+      resizeStartPos = { ...pos };
+      resizeStartSize = selectedText.size || 42;
+      return;
+    }
+  }
+
+  // 2. Hit-test all texts for drag
   let hit = null;
   for (let i = texts.length - 1; i >= 0; i--) {
     const t = texts[i];
-    const sz = t.size || 42;
-    ctx.font = `900 ${sz}px ${t.font}`;
-    const w = ctx.measureText(t.text).width;
+    const b = getTextBounds(t);
     if (
-      Math.abs(pos.x - t.x) < w / 2 + 20 &&
-      Math.abs(pos.y - t.y) < sz / 2 + 10
+      pos.x >= b.x &&
+      pos.x <= b.x + b.w &&
+      pos.y >= b.y &&
+      pos.y <= b.y + b.h
     ) {
       hit = t;
       break;
     }
   }
+
   if (hit) {
     selectedText = hit;
     dragging = true;
@@ -474,14 +558,25 @@ function startDrag(pos) {
   }
 }
 
+// ── MOVE ──────────────────────────────────────────────────────────
 function moveDrag(pos) {
+  if (resizing && selectedText) {
+    const dx = pos.x - resizeStartPos.x;
+    const dy = pos.y - resizeStartPos.y;
+    const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+    const newSize = Math.max(10, Math.min(120, resizeStartSize + delta * 0.4));
+    selectedText.size = Math.round(newSize);
+    document.getElementById("font-size").value = selectedText.size;
+    redraw();
+    return;
+  }
   if (!dragging || !selectedText) return;
   selectedText.x = Math.max(20, Math.min(canvas.width - 20, pos.x - dragOffX));
   selectedText.y = Math.max(20, Math.min(canvas.height - 20, pos.y - dragOffY));
   redraw();
 }
 
-// TEMPLATES
+// ── TEMPLATES ─────────────────────────────────────────────────────
 function applyTemplate(type) {
   const tpls = {
     drake: [
@@ -532,7 +627,7 @@ function applyTemplate(type) {
   showToast("Modèle appliqué ! Cliquez sur les textes pour les modifier.");
 }
 
-// TOAST
+// ── TOAST ─────────────────────────────────────────────────────────
 function showToast(msg) {
   const t = document.getElementById("toast");
   t.textContent = msg;
@@ -540,5 +635,5 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove("show"), 2500);
 }
 
-// INIT
+// ── INIT ──────────────────────────────────────────────────────────
 redraw();
