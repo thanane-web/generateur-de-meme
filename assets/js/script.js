@@ -340,117 +340,59 @@ function downloadMeme() {
 }
 
 // ── SHARE / COPY (desktop fix) ────────────────────────────────────
-// async function shareMeme() {
-//   if (!bgImage && !texts.length) {
-//     showToast("Ajoutez une image ou du texte !");
-//     return;
-//   }
-
-//   const sel = selectedText;
-//   selectedText = null;
-//   redraw();
-
-//   // 1. Mobile Share (Works for you)
-//   if (navigator.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
-//     try {
-//       const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
-//       const file = new File([blob], "meme.png", { type: "image/png" });
-//       await navigator.share({ files: [file], title: "Mon Mème" });
-//       restoreSelection(sel);
-//       return;
-//     } catch (e) {
-//       if (e.name === "AbortError") {
-//         restoreSelection(sel);
-//         return;
-//       }
-//     }
-//   }
-
-//   // 2. Desktop Clipboard (The "Correct" way for 2026)
-//   if (navigator.clipboard && window.ClipboardItem) {
-//     try {
-//       // Create the item IMMEDIATELY to satisfy browser security
-//       const item = new ClipboardItem({
-//         "image/png": new Promise((resolve, reject) => {
-//           canvas.toBlob((blob) => {
-//             if (blob) resolve(blob);
-//             else reject(new Error("Canvas toBlob failed"));
-//           }, "image/png");
-//         }),
-//       });
-
-//       await navigator.clipboard.write([item]);
-//       showToast("✅ Image copiée ! Collez avec Ctrl+V");
-//     } catch (err) {
-//       console.error("Clipboard failed:", err);
-//       // If it fails (likely CORS or Firefox), fallback to download
-//       downloadFallback();
-//     }
-//   } else {
-//     downloadFallback();
-//   }
-
-//   restoreSelection(sel);
-// }
 async function shareMeme() {
   if (!bgImage && !texts.length) {
     showToast("Ajoutez une image ou du texte !");
     return;
   }
 
-  // Masquer la sélection pour le rendu
   const sel = selectedText;
   selectedText = null;
   redraw();
 
-  showToast("Génération du lien... ⏳");
-
-  try {
-    // 1. Convertir le canvas en Blob
-    const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/png")
-    );
-
-    // 2. Préparer l'envoi vers ImgBB
-    const API_KEY = "85c601498fa4de1b93356d30c9ea4bf4"; // <--- METS TA CLÉ ICI
-    const formData = new FormData();
-    formData.append("image", blob);
-
-    // 3. Appel API
-    const response = await fetch(
-      `https://api.imgbb.com/1/upload?key=${API_KEY}`,
-      {
-        method: "POST",
-        body: formData,
+  // 1. Mobile Share (Works for you)
+  if (navigator.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+    try {
+      const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+      const file = new File([blob], "meme.png", { type: "image/png" });
+      await navigator.share({ files: [file], title: "Mon Mème" });
+      restoreSelection(sel);
+      return;
+    } catch (e) {
+      if (e.name === "AbortError") {
+        restoreSelection(sel);
+        return;
       }
-    );
-
-    const data = await response.json();
-
-    if (data.success) {
-      const shareUrl = data.data.url; // Le lien direct vers l'image
-
-      // 4. Partage Native (Mobile) ou Presse-papier (Desktop)
-      if (navigator.share) {
-        await navigator.share({
-          title: "Mon super Mème",
-          text: "Regarde le mème que je viens de créer !",
-          url: shareUrl,
-        });
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-        showToast("✅ Lien copié ! Partagez-le où vous voulez.");
-      }
-    } else {
-      throw new Error(data.error.message);
     }
-  } catch (err) {
-    console.error("Erreur détaillée:", err);
-    showToast("Erreur : Impossible de créer le lien.");
-  } finally {
-    restoreSelection(sel);
   }
+
+  // 2. Desktop Clipboard (The "Correct" way for 2026)
+  if (navigator.clipboard && window.ClipboardItem) {
+    try {
+      // Create the item IMMEDIATELY to satisfy browser security
+      const item = new ClipboardItem({
+        "image/png": new Promise((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Canvas toBlob failed"));
+          }, "image/png");
+        }),
+      });
+
+      await navigator.clipboard.write([item]);
+      showToast("✅ Image copiée ! Collez avec Ctrl+V");
+    } catch (err) {
+      console.error("Clipboard failed:", err);
+      // If it fails (likely CORS or Firefox), fallback to download
+      downloadFallback();
+    }
+  } else {
+    downloadFallback();
+  }
+
+  restoreSelection(sel);
 }
+
 function downloadFallback() {
   try {
     const link = document.createElement("a");
