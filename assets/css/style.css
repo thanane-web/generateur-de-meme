@@ -19,10 +19,13 @@ body {
   @apply text-xl font-semibold;
 }
 .layout {
-  @apply grid grid-cols-1 md:grid-cols-[1fr_300px] gap-4 items-start;
+  @apply flex flex-wrap sm:grid gap-3;
+}
+section.gallery-container h2 {
+  @apply text-xl font-semibold my-4;
 }
 .canvas-area {
-  @apply bg-gray-700 border-[0.5px] border-gray-500 rounded-sm p-4;
+  @apply bg-gray-700 border-[0.5px] border-gray-500 rounded-sm p-4 col-span-2;
 }
 .canvas-wrap {
   @apply relative bg-[#111] rounded-md overflow-hidden min-h-80 flex flex-wrap items-center justify-center;
@@ -53,7 +56,7 @@ body {
   transform: scale(0.98);
 }
 .panel {
-  @apply flex flex-col gap-3;
+  @apply max-sm:order-2 max-sm:w-full flex flex-col gap-3;
 }
 .card {
   @apply bg-gray-700 border-[0.5px] border-gray-500 rounded-sm py-4 px-5;
@@ -125,35 +128,17 @@ body {
 .drag-handle {
   @apply absolute w-2 h-2 bg-white border border-gray-300 rounded-full cursor-nwse-resize;
 }
-/* ── LOADER OVERLAY ─────────────────────────────── */
-
-/* Cache l'app le temps du loader */
 .app {
-  opacity: 0;
+  @apply opacity-0;
 }
 .app.ready {
-  opacity: 1;
-  transition: opacity 0.4s ease;
+  @apply opacity-100 transition-opacity ease-in-out duration-300;
 }
-
-/* Overlay plein écran */
 #loader-overlay {
-  position: fixed;
-  inset: 0;
-  background: #ffffff; /* adapte à ta couleur de fond */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  pointer-events: none;
+  @apply fixed inset-0 bg-white flex items-center justify-center z-[9999] pointer-events-none;
 }
-
-/* Phase 1 : logo au centre qui tourne */
 #loader-logo {
-  width: 80px;
-  height: 80px;
-  position: fixed;
-  /* centré par JS via getBoundingClientRect */
+  @apply w-20 h-20 fixed;
   animation: spin 1.1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   transform-origin: center center;
   will-change: transform;
@@ -178,7 +163,6 @@ body {
   }
 }
 
-/* Phase 2 : vol vers le header (appliqué via JS avec transition) */
 #loader-logo.fly-to-header {
   transition: top 0.6s cubic-bezier(0.7, 0, 0.3, 1),
     left 0.6s cubic-bezier(0.7, 0, 0.3, 1),
@@ -186,7 +170,6 @@ body {
     height 0.6s cubic-bezier(0.7, 0, 0.3, 1);
 }
 
-/* Fade out de l'overlay */
 #loader-overlay.fade-out {
   animation: overlayFade 0.35s ease forwards;
 }
@@ -197,10 +180,8 @@ body {
   }
 }
 
-/* Titre qui apparaît lettre par lettre */
 .svg-title .char {
-  display: inline-block;
-  opacity: 0;
+  @apply inline-block opacity-0;
   transform: translateY(8px);
   animation: charIn 0.4s ease forwards;
 }
@@ -211,38 +192,27 @@ body {
     transform: translateY(0);
   }
 }
-// gallerie
+
+section.gallery-container {
+  @apply max-sm:order-3 col-span-2 col-start-1 row-start-2;
+}
+
+.panel {
+  @apply col-span-2 col-start-3 row-span-2 row-start-1;
+}
+
 .gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 15px;
-  padding: 20px 0;
+  @apply flex gap-2.5 flex-wrap;
 }
 
 .gallery-item {
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
-}
-
-.gallery-item:hover {
-  transform: scale(1.05);
+  @apply max-w-[calc(50%-5px)] sm:w-[calc(33%-5px)] relative bg-[#364153] rounded-sm;
 }
 
 .gallery-item img {
-  width: 100%;
-  display: block;
+  @apply w-full h-[120px] object-contain rounded-sm;
 }
 
-.btn-download-small {
-  position: absolute;
-  bottom: 5px;
-  right: 5px;
-  background: rgba(255, 255, 255, 0.8);
-  padding: 5px;
-  border-radius: 50%;
-  text-decoration: none;
-  font-size: 12px;
+a.btn-download-small {
+  @apply absolute bottom-1 left-1;
 }

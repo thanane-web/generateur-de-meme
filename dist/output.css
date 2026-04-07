@@ -30,6 +30,7 @@
     --tracking-wider: 0.05em;
     --radius-sm: 0.25rem;
     --radius-md: 0.375rem;
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
     --default-transition-duration: 150ms;
     --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     --default-font-family: var(--font-sans);
@@ -324,15 +325,22 @@ body {
   font-weight: var(--font-weight-semibold);
 }
 .layout {
-  display: grid;
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  align-items: flex-start;
-  gap: calc(var(--spacing) * 4);
-  @media (width >= 48rem) {
-    grid-template-columns: 1fr 300px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 3);
+  @media (width >= 40rem) {
+    display: grid;
   }
 }
+section.gallery-container h2 {
+  margin-block: calc(var(--spacing) * 4);
+  font-size: var(--text-xl);
+  line-height: var(--tw-leading, var(--text-xl--line-height));
+  --tw-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+}
 .canvas-area {
+  grid-column: span 2 / span 2;
   border-radius: var(--radius-sm);
   border-style: var(--tw-border-style);
   border-width: 0.5px;
@@ -442,6 +450,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: calc(var(--spacing) * 3);
+  @media (width < 40rem) {
+    order: 2;
+  }
+  @media (width < 40rem) {
+    width: 100%;
+  }
 }
 .card {
   border-radius: var(--radius-sm);
@@ -660,26 +674,32 @@ body {
   background-color: var(--color-white);
 }
 .app {
-  opacity: 0;
+  opacity: 0%;
 }
 .app.ready {
-  opacity: 1;
-  transition: opacity 0.4s ease;
+  opacity: 100%;
+  transition-property: opacity;
+  transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+  transition-duration: var(--tw-duration, var(--default-transition-duration));
+  --tw-duration: 300ms;
+  transition-duration: 300ms;
+  --tw-ease: var(--ease-in-out);
+  transition-timing-function: var(--ease-in-out);
 }
 #loader-overlay {
+  pointer-events: none;
   position: fixed;
-  inset: 0;
-  background: #ffffff;
+  inset: calc(var(--spacing) * 0);
+  z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
-  pointer-events: none;
+  background-color: var(--color-white);
 }
 #loader-logo {
-  width: 80px;
-  height: 80px;
   position: fixed;
+  height: calc(var(--spacing) * 20);
+  width: calc(var(--spacing) * 20);
   animation: spin 1.1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   transform-origin: center center;
   will-change: transform;
@@ -715,7 +735,7 @@ body {
 }
 .svg-title .char {
   display: inline-block;
-  opacity: 0;
+  opacity: 0%;
   transform: translateY(8px);
   animation: charIn 0.4s ease forwards;
 }
@@ -725,35 +745,44 @@ body {
     transform: translateY(0);
   }
 }
-// gallerie .gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 15px;
-  padding: 20px 0;
+section.gallery-container {
+  grid-column: span 2 / span 2;
+  grid-column-start: 1;
+  grid-row-start: 2;
+  @media (width < 40rem) {
+    order: 3;
+  }
+}
+.panel {
+  grid-column: span 2 / span 2;
+  grid-column-start: 3;
+  grid-row: span 2 / span 2;
+  grid-row-start: 1;
+}
+.gallery-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--spacing) * 2.5);
 }
 .gallery-item {
   position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
-}
-.gallery-item:hover {
-  transform: scale(1.05);
+  max-width: calc(50% - 5px);
+  border-radius: var(--radius-sm);
+  background-color: #364153;
+  @media (width >= 40rem) {
+    width: calc(33% - 5px);
+  }
 }
 .gallery-item img {
+  height: 120px;
   width: 100%;
-  display: block;
+  border-radius: var(--radius-sm);
+  object-fit: contain;
 }
-.btn-download-small {
+a.btn-download-small {
   position: absolute;
-  bottom: 5px;
-  right: 5px;
-  background: rgba(255, 255, 255, 0.8);
-  padding: 5px;
-  border-radius: 50%;
-  text-decoration: none;
-  font-size: 12px;
+  bottom: calc(var(--spacing) * 1);
+  left: calc(var(--spacing) * 1);
 }
 @property --tw-rotate-x {
   syntax: "*";
@@ -880,6 +909,10 @@ body {
   inherits: false;
   initial-value: 0;
 }
+@property --tw-ease {
+  syntax: "*";
+  inherits: false;
+}
 @keyframes spin {
   to {
     transform: rotate(360deg);
@@ -917,6 +950,7 @@ body {
       --tw-translate-x: 0;
       --tw-translate-y: 0;
       --tw-translate-z: 0;
+      --tw-ease: initial;
     }
   }
 }

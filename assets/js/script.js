@@ -1,57 +1,93 @@
 const canvas = document.getElementById("meme-canvas");
 const ctx = canvas.getContext("2d");
 const dropZone = document.getElementById("drop-zone");
+
 let bgImage = null;
 let texts = [];
 let selectedText = null;
-let dragging = false,
-  dragOffX = 0,
+let dragging = false;
+let dragOffX = 0,
   dragOffY = 0;
 let currentAlign = "center";
 let previewText = null;
 
-// ── RESIZE STATE ──────────────────────────────────────────────────
+// Resize state
 let resizing = false;
-let resizeHandle = null; // 'nw'|'n'|'ne'|'e'|'se'|'s'|'sw'|'w'
+let resizeHandle = null;
 let resizeStartPos = null;
 let resizeStartSize = null;
-const HANDLE_R = 6; // hit-radius for handles
+const HANDLE_R = 6;
 
-// ── LIVE PREVIEW LISTENERS ────────────────────────────────────────
-document.getElementById("text-content").addEventListener("input", livePreview);
-document.getElementById("font-size").addEventListener("input", livePreview);
-document.getElementById("font-family").addEventListener("change", livePreview);
+// ====================== EVENT LISTENERS ======================
 
-document.getElementById("text-color").addEventListener("input", (e) => {
-  if (previewText) previewText.color = e.target.value;
-  if (selectedText && selectedText !== previewText)
-    selectedText.color = e.target.value;
-  redraw();
+// Remove old duplicate listeners and set clean ones
+const textContentEl = document.getElementById("text-content");
+const fontSizeEl = document.getElementById("font-size");
+const fontFamilyEl = document.getElementById("font-family");
+const textColorEl = document.getElementById("text-color");
+const strokeColorEl = document.getElementById("stroke-color");
+const strokeWidthEl = document.getElementById("stroke-width");
+const strokeValEl = document.getElementById("stroke-val");
+
+// Live preview + editing
+function updateFromForm() {
+  if (selectedText) {
+    selectedText.text = textContentEl.value.trim();
+    selectedText.font = fontFamilyEl.value;
+    selectedText.size = parseInt(fontSizeEl.value) || 42;
+    selectedText.color = textColorEl.value;
+    selectedText.strokeColor = strokeColorEl.value;
+    selectedText.strokeWidth = parseInt(strokeWidthEl.value) || 3;
+    selectedText.align = currentAlign;
+    redraw();
+  } else {
+    livePreview();
+  }
+}
+
+textContentEl.addEventListener("input", updateFromForm);
+fontFamilyEl.addEventListener("change", updateFromForm);
+fontSizeEl.addEventListener("input", updateFromForm);
+textColorEl.addEventListener("input", updateFromForm);
+strokeColorEl.addEventListener("input", updateFromForm);
+strokeWidthEl.addEventListener("input", () => {
+  strokeValEl.textContent = strokeWidthEl.value + "px";
+  updateFromForm();
 });
 
-document.getElementById("stroke-color").addEventListener("input", (e) => {
-  if (previewText) previewText.strokeColor = e.target.value;
-  if (selectedText && selectedText !== previewText)
-    selectedText.strokeColor = e.target.value;
-  redraw();
-});
+// Color swatches
+const swatches = document.querySelectorAll(".color-swatch");
 
-document.getElementById("stroke-width").addEventListener("input", (e) => {
-  document.getElementById("stroke-val").textContent = e.target.value + "px";
-  if (previewText) previewText.strokeWidth = e.target.value;
-  if (selectedText && selectedText !== previewText)
-    selectedText.strokeWidth = e.target.value;
-  redraw();
-});
+function setTextColor(hex) {
+  textColorEl.value = hex;
+  swatches.forEach((s) => s.classList.remove("active"));
+  // Note: event.target may not exist if called programmatically
+  if (event && event.target) event.target.classList.add("active");
 
+  if (selectedText) selectedText.color = hex;
+  if (previewText) previewText.color = hex;
+  redraw();
+}
+
+// Alignment
+function setAlign(a) {
+  currentAlign = a;
+  ["left", "center", "right"].forEach((x) => {
+    const btn = document.getElementById("align-" + x);
+    if (btn) btn.className = "btn" + (x === a ? " btn-primary" : "");
+  });
+
+  if (selectedText) selectedText.align = a;
+  if (previewText) previewText.align = a;
+  redraw();
+}
 // ── LIVE PREVIEW ──────────────────────────────────────────────────
 function livePreview() {
-  const content = document.getElementById("text-content").value.trim();
+  const content = textContentEl.value.trim();
 
-  if (previewText) {
-    texts = texts.filter((t) => t.id !== previewText.id);
-    previewText = null;
-  }
+  // Remove old preview if exists
+  texts = texts.filter((t) => t.id !== "__preview__");
+  previewText = null;
 
   if (!content) {
     redraw();
@@ -62,46 +98,70 @@ function livePreview() {
     id: "__preview__",
     text: content,
     x: canvas.width / 2,
-    y:
-      texts.filter((t) => t.id !== "__preview__").length === 0
-        ? 50
-        : canvas.height - 50,
-    size: parseInt(document.getElementById("font-size").value) || 42,
-    font: document.getElementById("font-family").value,
-    color: document.getElementById("text-color").value,
-    strokeColor: document.getElementById("stroke-color").value,
-    strokeWidth: document.getElementById("stroke-width").value,
+    y: texts.length === 0 ? 50 : canvas.height - 50,
+    size: parseInt(fontSizeEl.value) || 42,
+    font: fontFamilyEl.value,
+    color: textColorEl.value,
+    strokeColor: strokeColorEl.value,
+    strokeWidth: parseInt(strokeWidthEl.value) || 3,
     align: currentAlign,
   };
 
   texts.push(previewText);
   redraw();
 }
+// ── REDRAW ────────────────────────────────────────────────────────
+function redraw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-// ── COLOR SWATCHES ────────────────────────────────────────────────
-const swatches = document.querySelectorAll(".color-swatch");
+  if (bgImage) {
+    ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
 
-function setTextColor(hex) {
-  document.getElementById("text-color").value = hex;
-  swatches.forEach((s) => s.classList.remove("active"));
-  event.target.classList.add("active");
-  if (previewText) previewText.color = hex;
-  if (selectedText && selectedText !== previewText) selectedText.color = hex;
-  redraw();
-}
+  texts.forEach((t) => {
+    if (!t.text) return;
 
-// ── ALIGNMENT ─────────────────────────────────────────────────────
-function setAlign(a) {
-  currentAlign = a;
-  ["left", "center", "right"].forEach((x) => {
-    document.getElementById("align-" + x).className =
-      "btn" + (x === a ? " btn-primary" : "");
+    const sz = t.size || 42;
+    ctx.font = `900 ${sz}px ${t.font || "Impact, sans-serif"}`;
+    ctx.textAlign = t.align || "center";
+    ctx.textBaseline = "middle";
+
+    const sw = parseInt(t.strokeWidth || 3);
+    if (sw > 0) {
+      ctx.strokeStyle = t.strokeColor || "#000";
+      ctx.lineWidth = sw * 2;
+      ctx.lineJoin = "round";
+      wrapText(ctx, t.text, t.x, t.y, canvas.width - 40, sz * 1.3, true);
+    }
+
+    ctx.fillStyle = t.color || "#fff";
+    wrapText(ctx, t.text, t.x, t.y, canvas.width - 40, sz * 1.3, false);
+
+    // Selection highlight
+    if (t === selectedText) {
+      const b = getTextBounds(t);
+      ctx.strokeStyle = "rgba(100,150,255,0.9)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+      ctx.setLineDash([]);
+
+      const handles = getHandles(b);
+      for (const h of Object.values(handles)) {
+        ctx.fillStyle = "#fff";
+        ctx.strokeStyle = "rgba(100,150,255,1)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(h.x, h.y, HANDLE_R, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
   });
-  if (previewText) previewText.align = a;
-  if (selectedText && selectedText !== previewText) selectedText.align = a;
-  redraw();
 }
-
 // ── HELPERS: bounding box ─────────────────────────────────────────
 function getTextBounds(t) {
   const sz = t.size || 42;
@@ -154,53 +214,6 @@ function hitHandle(pos, b) {
   return null;
 }
 
-// ── REDRAW ────────────────────────────────────────────────────────
-function redraw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (bgImage) {
-    ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
-  } else {
-    ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-
-  texts.forEach((t) => {
-    const sz = t.size || 42;
-    ctx.font = `900 ${sz}px ${t.font || "Impact, sans-serif"}`;
-    ctx.textAlign = t.align || "center";
-    ctx.textBaseline = "middle";
-    const sw = parseInt(t.strokeWidth || 3);
-    if (sw > 0) {
-      ctx.strokeStyle = t.strokeColor || "#000";
-      ctx.lineWidth = sw * 2;
-      ctx.lineJoin = "round";
-      wrapText(ctx, t.text, t.x, t.y, canvas.width - 40, sz * 1.3, true);
-    }
-    ctx.fillStyle = t.color || "#fff";
-    wrapText(ctx, t.text, t.x, t.y, canvas.width - 40, sz * 1.3, false);
-
-    if (t === selectedText) {
-      const b = getTextBounds(t);
-      ctx.strokeStyle = "rgba(100,150,255,0.9)";
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 3]);
-      ctx.strokeRect(b.x, b.y, b.w, b.h);
-      ctx.setLineDash([]);
-
-      const handles = getHandles(b);
-      for (const h of Object.values(handles)) {
-        ctx.fillStyle = "#fff";
-        ctx.strokeStyle = "rgba(100,150,255,1)";
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.arc(h.x, h.y, HANDLE_R, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      }
-    }
-  });
-}
-
 // ── WRAP TEXT ─────────────────────────────────────────────────────
 function wrapText(ctx, text, x, y, maxW, lineH, stroke) {
   const lines = getWrappedLines(ctx, text, maxW);
@@ -214,48 +227,49 @@ function wrapText(ctx, text, x, y, maxW, lineH, stroke) {
 
 // ── ADD TEXT ──────────────────────────────────────────────────────
 function addText() {
-  const content = document.getElementById("text-content").value.trim();
+  const content = textContentEl.value.trim();
   if (!content) {
     showToast("Entrez du texte d'abord !");
     return;
   }
 
-  if (previewText) {
-    previewText.id = Date.now();
-    selectedText = previewText;
-    previewText = null;
-  } else {
-    const t = {
-      id: Date.now(),
-      text: content,
-      x: canvas.width / 2,
-      y: texts.length === 0 ? 50 : canvas.height - 50,
-      size: parseInt(document.getElementById("font-size").value) || 42,
-      font: document.getElementById("font-family").value,
-      color: document.getElementById("text-color").value,
-      strokeColor: document.getElementById("stroke-color").value,
-      strokeWidth: document.getElementById("stroke-width").value,
-      align: currentAlign,
-    };
-    texts.push(t);
-    selectedText = t;
-  }
+  // Remove preview
+  texts = texts.filter((t) => t.id !== "__preview__");
+  previewText = null;
+
+  const newText = {
+    id: Date.now(),
+    text: content,
+    x: canvas.width / 2,
+    y: texts.length === 0 ? 50 : canvas.height - 50,
+    size: parseInt(fontSizeEl.value) || 42,
+    font: fontFamilyEl.value,
+    color: textColorEl.value,
+    strokeColor: strokeColorEl.value,
+    strokeWidth: parseInt(strokeWidthEl.value) || 3,
+    align: currentAlign,
+  };
+
+  texts.push(newText);
+  selectedText = newText;
 
   renderTextsList();
   redraw();
-  document.getElementById("text-content").value = "";
-  previewText = null;
-}
 
+  // Clear input after adding
+  textContentEl.value = "";
+}
 // ── TEXTS LIST ────────────────────────────────────────────────────
 function renderTextsList() {
   const list = document.getElementById("texts-list");
   const permanentTexts = texts.filter((t) => t.id !== "__preview__");
+
   if (!permanentTexts.length) {
     list.innerHTML =
       '<div style="font-size:12px;color:var(--color-text-secondary);text-align:center;padding:8px">Aucun texte ajouté</div>';
     return;
   }
+
   list.innerHTML = permanentTexts
     .map(
       (t) => `
@@ -273,24 +287,32 @@ function renderTextsList() {
     )
     .join("");
 }
-
-// ── SELECT / DELETE ───────────────────────────────────────────────
+// ── SELECT TEXT (Fixed + Live Editing) ───────────────────────────
 function selectText(id) {
   selectedText = texts.find((t) => t.id === id) || null;
+
   if (selectedText) {
-    document.getElementById("text-content").value = selectedText.text;
-    document.getElementById("font-size").value = selectedText.size;
-    document.getElementById("font-family").value = selectedText.font;
-    document.getElementById("text-color").value = selectedText.color;
-    document.getElementById("stroke-color").value = selectedText.strokeColor;
-    document.getElementById("stroke-width").value = selectedText.strokeWidth;
-    document.getElementById("stroke-val").textContent =
-      selectedText.strokeWidth + "px";
+    textContentEl.value = selectedText.text || "";
+    fontSizeEl.value = selectedText.size || 42;
+    fontFamilyEl.value = selectedText.font || "Impact, sans-serif";
+    textColorEl.value = selectedText.color || "#ffffff";
+    strokeColorEl.value = selectedText.strokeColor || "#000000";
+    strokeWidthEl.value = selectedText.strokeWidth || 3;
+    strokeValEl.textContent = (selectedText.strokeWidth || 3) + "px";
+
+    currentAlign = selectedText.align || "center";
+    ["left", "center", "right"].forEach((x) => {
+      const btn = document.getElementById("align-" + x);
+      if (btn)
+        btn.className = "btn" + (x === currentAlign ? " btn-primary" : "");
+    });
+
+    previewText = null; // disable preview mode
   }
+
   renderTextsList();
   redraw();
 }
-
 function deleteText(id) {
   texts = texts.filter((t) => t.id !== id);
   if (selectedText && selectedText.id === id) selectedText = null;
@@ -322,23 +344,51 @@ function resetAllCanvas() {
 }
 
 // ── DOWNLOAD ──────────────────────────────────────────────────────
+// function downloadMeme() {
+//   if (!bgImage && !texts.length) {
+//     showToast("Ajoutez une image ou du texte !");
+//     return;
+//   }
+//   const sel = selectedText;
+//   selectedText = null;
+//   redraw();
+//   const link = document.createElement("a");
+//   link.download = "meme-" + Date.now() + ".png";
+//   link.href = canvas.toDataURL("image/png");
+//   link.click();
+//   selectedText = sel;
+//   redraw();
+//   showToast("Mème téléchargé !");
+// }
 function downloadMeme() {
   if (!bgImage && !texts.length) {
     showToast("Ajoutez une image ou du texte !");
     return;
   }
+
   const sel = selectedText;
   selectedText = null;
   redraw();
+
   const link = document.createElement("a");
   link.download = "meme-" + Date.now() + ".png";
   link.href = canvas.toDataURL("image/png");
   link.click();
+
   selectedText = sel;
   redraw();
-  showToast("Mème téléchargé !");
-}
 
+  saveMemeToGallery();
+
+  // Auto offer the shareable link
+  setTimeout(() => {
+    if (confirm("Voulez-vous aussi copier un lien direct vers ce mème ?")) {
+      copyMemeLink();
+    }
+  }, 800);
+
+  showToast("✅ Mème téléchargé + sauvegardé dans la galerie !");
+}
 // ── SHARE / COPY (desktop fix) ────────────────────────────────────
 async function shareMeme() {
   if (!bgImage && !texts.length) {
@@ -350,46 +400,55 @@ async function shareMeme() {
   selectedText = null;
   redraw();
 
-  // 1. Mobile Share (Works for you)
+  let saved = false;
+
+  // Mobile native share
   if (navigator.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
     try {
       const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
       const file = new File([blob], "meme.png", { type: "image/png" });
       await navigator.share({ files: [file], title: "Mon Mème" });
-      restoreSelection(sel);
-      return;
+      saved = true;
     } catch (e) {
-      if (e.name === "AbortError") {
-        restoreSelection(sel);
-        return;
+      if (e.name !== "AbortError") {
+        console.warn("Share failed", e);
       }
     }
   }
-
-  // 2. Desktop Clipboard (The "Correct" way for 2026)
-  if (navigator.clipboard && window.ClipboardItem) {
+  // Desktop: Copy to clipboard
+  else if (navigator.clipboard && window.ClipboardItem) {
     try {
-      // Create the item IMMEDIATELY to satisfy browser security
       const item = new ClipboardItem({
-        "image/png": new Promise((resolve, reject) => {
-          canvas.toBlob((blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error("Canvas toBlob failed"));
-          }, "image/png");
+        "image/png": new Promise((resolve) => {
+          canvas.toBlob((blob) => resolve(blob), "image/png");
         }),
       });
-
       await navigator.clipboard.write([item]);
-      showToast("✅ Image copiée ! Collez avec Ctrl+V");
+      showToast("✅ Image copiée dans le presse-papiers !");
+      saved = true;
     } catch (err) {
-      console.error("Clipboard failed:", err);
-      // If it fails (likely CORS or Firefox), fallback to download
+      console.warn("Clipboard failed, falling back to download", err);
       downloadFallback();
+      saved = true;
     }
-  } else {
+  }
+  // Very old browser fallback
+  else {
     downloadFallback();
+    saved = true;
   }
 
+  // Auto-save + offer link
+  if (saved) {
+    saveMemeToGallery();
+
+    // Small delay so the toast doesn't overlap
+    setTimeout(() => {
+      if (confirm("Copier un lien direct pour partager ce mème ?")) {
+        copyMemeLink();
+      }
+    }, 1000);
+  }
   restoreSelection(sel);
 }
 
@@ -639,20 +698,14 @@ function showToast(msg) {
 }
 // galerie
 function saveMemeToGallery() {
-  const memeData = canvas.toDataURL("image/png"); // Convertit le canvas en image
-
-  // Récupérer la galerie existante ou créer un tableau vide
+  const memeData = canvas.toDataURL("image/png");
   let gallery = JSON.parse(localStorage.getItem("myMemes")) || [];
-
-  // Ajouter le nouveau mème au début de la liste
-  gallery.unshift(memeData);
-
-  // Limiter à 10 ou 20 mèmes pour ne pas saturer le stockage (5MB max)
-  if (gallery.length > 12) gallery.pop();
-
+  gallery.unshift(memeData); // newest first
+  if (gallery.length > 12) gallery.pop(); // limit to 12
   localStorage.setItem("myMemes", JSON.stringify(gallery));
-  renderGallery(); // Rafraîchir l'affichage
+  renderGallery();
 }
+
 function renderGallery() {
   const galleryGrid = document.getElementById("memeGallery");
   const gallery = JSON.parse(localStorage.getItem("myMemes")) || [];
@@ -665,15 +718,42 @@ function renderGallery() {
   galleryGrid.innerHTML = gallery
     .map(
       (imgSrc, index) => `
-    <div class="gallery-item">
-      <img src="${imgSrc}" alt="Meme ${index}">
-      <a href="${imgSrc}" download="meme-${index}.png" class="btn-download-small">⬇️</a>
-    </div>
-  `
+      <div class="gallery-item">
+        <img src="${imgSrc}" alt="Meme ${index}">
+        <a href="${imgSrc}" download="meme-${index}.png" class="btn-download-small">⬇️</a>
+      </div>
+    `
     )
     .join("");
 }
+// ── GENERATE & COPY SHAREABLE LINK ───────────────────────────────
+function copyMemeLink() {
+  if (!bgImage && !texts.length) {
+    showToast("Créez un mème d'abord !");
+    return;
+  }
 
+  const dataUrl = canvas.toDataURL("image/png");
+
+  // Copy the direct image link to clipboard
+  navigator.clipboard
+    .writeText(dataUrl)
+    .then(() => {
+      showToast(
+        "✅ Lien de l'image copié !\nCollez-le dans un nouveau onglet ou envoyez-le à vos amis."
+      );
+    })
+    .catch(() => {
+      // Fallback if clipboard fails
+      const tempInput = document.createElement("textarea");
+      tempInput.value = dataUrl;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand("copy");
+      document.body.removeChild(tempInput);
+      showToast("✅ Lien copié (méthode alternative) !");
+    });
+}
 // Appeler renderGallery au chargement de la page
 window.addEventListener("DOMContentLoaded", renderGallery);
 // ── INIT ──────────────────────────────────────────────────────────
