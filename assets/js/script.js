@@ -393,38 +393,62 @@ function downloadMeme() {
 //   restoreSelection(sel);
 // }
 async function shareMeme() {
-  const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+  if (!bgImage && !texts.length) {
+    showToast("Ajoutez une image ou du texte !");
+    return;
+  }
+
+  // Masquer la sélection pour le rendu
+  const sel = selectedText;
+  selectedText = null;
+  redraw();
 
   showToast("Génération du lien... ⏳");
 
-  const formData = new FormData();
-  formData.append("image", blob);
-
   try {
-    // Note: Il faudra créer un Client-ID gratuit sur Imgur pour que ce soit stable
-    const response = await fetch("https://api.imgur.com/3/image", {
-      method: "POST",
-      headers: {
-        Authorization: "Client-ID TON_CLIENT_ID_ICI",
-      },
-      body: formData,
-    });
+    // 1. Convertir le canvas en Blob
+    const blob = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/png")
+    );
+
+    // 2. Préparer l'envoi vers ImgBB
+    const API_KEY = "85c601498fa4de1b93356d30c9ea4bf4"; // <--- METS TA CLÉ ICI
+    const formData = new FormData();
+    formData.append("image", blob);
+
+    // 3. Appel API
+    const response = await fetch(
+      `https://api.imgbb.com/1/upload?key=${API_KEY}`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
 
     const data = await response.json();
-    const link = data.data.link; // Voici ton lien réel !
 
-    // Maintenant on partage ce LIEN au lieu du fichier
-    if (navigator.share) {
-      await navigator.share({
-        title: "Mon Mème",
-        url: link,
-      });
+    if (data.success) {
+      const shareUrl = data.data.url; // Le lien direct vers l'image
+
+      // 4. Partage Native (Mobile) ou Presse-papier (Desktop)
+      if (navigator.share) {
+        await navigator.share({
+          title: "Mon super Mème",
+          text: "Regarde le mème que je viens de créer !",
+          url: shareUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        showToast("✅ Lien copié ! Partagez-le où vous voulez.");
+      }
     } else {
-      await navigator.clipboard.writeText(link);
-      showToast("Lien copié dans le presse-papier !");
+      throw new Error(data.error.message);
     }
   } catch (err) {
-    showToast("Erreur lors de la création du lien.");
+    console.error("Erreur détaillée:", err);
+    showToast("Erreur : Impossible de créer le lien.");
+  } finally {
+    restoreSelection(sel);
   }
 }
 function downloadFallback() {
