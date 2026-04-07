@@ -316,20 +316,17 @@ async function shareMeme() {
     return;
   }
 
-  // Désélectionner le texte pour ne pas avoir le cadre bleu sur le partage
+  // On retire la sélection pour avoir un rendu propre
   const sel = selectedText;
   selectedText = null;
   redraw();
 
   canvas.toBlob(async (blob) => {
-    if (!blob) {
-      showToast("Erreur lors de la création de l'image.");
-      return;
-    }
+    if (!blob) return;
 
     const file = new File([blob], "meme.png", { type: "image/png" });
 
-    // 1. Essayer le partage natif (Mobile / Certains navigateurs Desktop)
+    // VERIFICATION : Est-ce que le navigateur PEUT partager ce fichier ?
     if (
       navigator.share &&
       navigator.canShare &&
@@ -339,37 +336,36 @@ async function shareMeme() {
         await navigator.share({
           files: [file],
           title: "Mon Mème",
-          text: "Regardez ce mème que je viens de créer !",
+          text: "Regardez ce mème !",
         });
-        // Si réussi, on s'arrête là
-        selectedText = sel;
-        redraw();
+        resetSelection(sel);
         return;
       } catch (e) {
+        // Si l'utilisateur annule, on ne fait rien de plus
         if (e.name === "AbortError") {
-          selectedText = sel;
-          redraw();
+          resetSelection(sel);
           return;
         }
-        // Si échec du partage, on passe à la copie
       }
     }
 
-    // 2. Fallback : Copie automatique dans le presse-papiers (Idéal Desktop)
+    // FALLBACK DESKTOP : Copie dans le presse-papiers
     try {
       const item = new ClipboardItem({ "image/png": blob });
       await navigator.clipboard.write([item]);
-      showToast(
-        "Partage direct non supporté : Image copiée ! Collez-la (Ctrl+V)"
-      );
+      showToast("Partage non supporté : Image copiée ! Collez-la (Ctrl+V)");
     } catch (err) {
-      // 3. Ultime recours : Proposer le téléchargement
-      showToast("Impossible de copier. Utilisez le bouton Télécharger.");
+      showToast("Utilisez le bouton 'Télécharger' sur ce navigateur.");
     }
 
-    selectedText = sel;
-    redraw();
+    resetSelection(sel);
   });
+}
+
+// Fonction utilitaire pour remettre le cadre de sélection après l'export
+function resetSelection(sel) {
+  selectedText = sel;
+  redraw();
 }
 async function copyToClipboard() {
   try {
