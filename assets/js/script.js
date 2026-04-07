@@ -282,52 +282,108 @@ function downloadMeme() {
   showToast("Mème téléchargé !");
 }
 
-// Partager
+// SHARE
+// async function shareMeme() {
+//   if (!bgImage && !texts.length) {
+//     showToast("Ajoutez une image ou du texte !");
+//     return;
+//   }
+//   const sel = selectedText;
+//   selectedText = null;
+//   redraw();
+//   canvas.toBlob(async (blob) => {
+//     const file = new File([blob], "meme.png", { type: "image/png" });
+//     if (navigator.share && navigator.canShare({ files: [file] })) {
+//       try {
+//         await navigator.share({
+//           files: [file],
+//           title: "Mon Mème",
+//           text: "Regardez ce mème !",
+//         });
+//       } catch (e) {
+//         copyToClipboard();
+//       }
+//     } else {
+//       copyToClipboard();
+//     }
+//     selectedText = sel;
+//     redraw();
+//   });
+// }
 async function shareMeme() {
   if (!bgImage && !texts.length) {
     showToast("Ajoutez une image ou du texte !");
     return;
   }
 
+  // Désélectionner le texte pour ne pas avoir le cadre bleu sur le partage
   const sel = selectedText;
   selectedText = null;
   redraw();
 
   canvas.toBlob(async (blob) => {
+    if (!blob) {
+      showToast("Erreur lors de la création de l'image.");
+      return;
+    }
+
     const file = new File([blob], "meme.png", { type: "image/png" });
 
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    // 1. Essayer le partage natif (Mobile / Certains navigateurs Desktop)
+    if (
+      navigator.share &&
+      navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    ) {
       try {
         await navigator.share({
           files: [file],
           title: "Mon Mème",
-          text: "Regardez ce mème !",
+          text: "Regardez ce mème que je viens de créer !",
         });
+        // Si réussi, on s'arrête là
+        selectedText = sel;
+        redraw();
+        return;
       } catch (e) {
-        if (e.name !== "AbortError") {
-          copyToClipboard();
+        if (e.name === "AbortError") {
+          selectedText = sel;
+          redraw();
+          return;
         }
+        // Si échec du partage, on passe à la copie
       }
-    } else {
-      showToast("Partage direct non supporté ici. Image copiée !");
-      copyToClipboard();
+    }
+
+    // 2. Fallback : Copie automatique dans le presse-papiers (Idéal Desktop)
+    try {
+      const item = new ClipboardItem({ "image/png": blob });
+      await navigator.clipboard.write([item]);
+      showToast(
+        "Partage direct non supporté : Image copiée ! Collez-la (Ctrl+V)"
+      );
+    } catch (err) {
+      // 3. Ultime recours : Proposer le téléchargement
+      showToast("Impossible de copier. Utilisez le bouton Télécharger.");
     }
 
     selectedText = sel;
     redraw();
   });
 }
-
 async function copyToClipboard() {
   try {
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve));
-    const item = new ClipboardItem({ "image/png": blob });
-    await navigator.clipboard.write([item]);
-    showToast("Copié ! Collez-le (Ctrl+V) sur Discord, FB ou Twitter.");
-  } catch (err) {
-    showToast("Erreur de copie. Utilisez 'Télécharger'.");
+    canvas.toBlob(async (blob) => {
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob }),
+      ]);
+      showToast("Image copiée dans le presse-papiers !");
+    });
+  } catch (e) {
+    showToast('Utilisez "Télécharger" pour sauvegarder !');
   }
 }
+
 // LOAD IMAGE
 function loadImageFromFile(file) {
   const reader = new FileReader();
