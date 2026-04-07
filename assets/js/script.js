@@ -350,64 +350,59 @@ async function shareMeme() {
   selectedText = null;
   redraw();
 
-  const getBlob = () =>
-    new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-
-  // --- 1. Mobile: Web Share API ---
-  if (navigator.share && navigator.canShare) {
+  // 1. Mobile Share (Works for you)
+  if (navigator.share && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
     try {
-      const blob = await getBlob();
+      const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
       const file = new File([blob], "meme.png", { type: "image/png" });
-
-      if (navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: "Mon Mème" });
-        restoreSelection(sel);
-        return; // Success on mobile
-      }
+      await navigator.share({ files: [file], title: "Mon Mème" });
+      restoreSelection(sel);
+      return;
     } catch (e) {
-      if (e.name !== "AbortError") console.error("Share failed:", e);
-      // If sharing fails/is cancelled, we fall through to clipboard
+      if (e.name === "AbortError") {
+        restoreSelection(sel);
+        return;
+      }
     }
   }
 
-  // --- 2. Desktop: Clipboard API ---
+  // 2. Desktop Clipboard (The "Correct" way for 2026)
   if (navigator.clipboard && window.ClipboardItem) {
     try {
-      // Logic: Start the clipboard write immediately.
-      // Many modern browsers allow passing a promise inside ClipboardItem
-      // to keep the "user activation" alive.
+      // Create the item IMMEDIATELY to satisfy browser security
       const item = new ClipboardItem({
-        "image/png": getBlob(),
+        "image/png": new Promise((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Canvas toBlob failed"));
+          }, "image/png");
+        }),
       });
 
       await navigator.clipboard.write([item]);
-      showToast("✅ Image copiée ! Collez-la avec Ctrl+V");
+      showToast("✅ Image copiée ! Collez avec Ctrl+V");
     } catch (err) {
       console.error("Clipboard failed:", err);
-      fallbackDownload(sel);
+      // If it fails (likely CORS or Firefox), fallback to download
+      downloadFallback();
     }
   } else {
-    fallbackDownload(sel);
+    downloadFallback();
   }
 
   restoreSelection(sel);
 }
 
-// Helper for when clipboard/share fails
-async function fallbackDownload(sel) {
+function downloadFallback() {
   try {
-    const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "meme.png";
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast("Copié non supporté : Image téléchargée.");
+    const link = document.createElement("a");
+    link.download = "meme.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    showToast("Copie bloquée : Image téléchargée.");
   } catch (e) {
-    showToast("Erreur lors de la génération de l'image.");
+    showToast("Erreur : L'image provient d'un autre site (CORS).");
   }
-  restoreSelection(sel);
 }
 function restoreSelection(sel) {
   selectedText = sel;
